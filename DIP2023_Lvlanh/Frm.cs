@@ -5,6 +5,7 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 namespace DIP2023_Lvlanh
@@ -30,50 +31,284 @@ namespace DIP2023_Lvlanh
                 _imgSource = new Bitmap(openFileDialog.FileName);
                 picSource.Image = _imgSource;
                 _imgResult = new Bitmap(_imgSource);
-                
                 if (rdoconvert.Checked)//chuyen anh mau sang anh xam
                     picResult.Image = Convertanhxam(_imgSource);
                 else if (rdohistogram.Checked)//ve histogram
                 {
-                    _imgResult=Convertanhxam(_imgSource);//chuyển đổi ảnh sang ảnh xám trước khi vẽ histogram
+                    _imgResult = Convertanhxam(_imgSource);//chuyển đổi ảnh sang ảnh xám trước khi vẽ histogram
                     picHistogram.Image = Vehistogram(GethistogramValue(_imgResult));
                     picHistogram.Image.RotateFlip(RotateFlipType.RotateNoneFlipY);
                     picResult.Image = _imgResult;
                 }
-                else if (rdobienanh.Checked)
+                else if (rdoisodata.Checked)
                 {
-                  picResult.Image= Timbienanh(_imgResult);
+                    this.picResult.Image = TachnguongIso(_imgSource);
+                }
+                else if (rdotuongphan.Checked)
+                {
+                    this.picResult.Image = Tangdotuongphan(_imgSource);
+                }
+                else if (rdoamban.Checked)
+                {
+                    this.picResult.Image = Amban(_imgSource);
+                }
+                else if (rdotrungbinh.Checked)
+                {
+                    int size = Convert.ToInt32(txtsize.Text);
+                    this.picResult.Image = Loctrungbinh(_imgSource, size);
+                }
+                else if (rdoloctrungvi.Checked)
+                {
+                    int size = Convert.ToInt32(txtsize.Text);
+                    this.picResult.Image = Loctrungvi(_imgSource, size);
+                }
+                else if (rdoloctheok.Checked)
+                {
+                    int k =Convert.ToInt32(txtk.Text);
+                    int size = Convert.ToInt32(txtsize.Text);
+                    this.picResult.Image = LoctheoK(_imgSource,k,size);
                 }
                 else
                     picResult.Image = _imgResult;
-
-                /*picResult.Refresh();*/
             }
         }
-        private void trkC_ValueChanged(object sender, EventArgs e)
+        Task<Bitmap> thaydoidosang(Bitmap _imgsouce, Int32 Value)
         {
-            lblC.Text = trkC.Value.ToString();
-            if (_imgSource == null)
-                return;
-            int c = trkC.Value;
             Color color1;
             Color color2;
-            for (int x = 0; x < _imgSource.Width; x++)
-                for (int y = 0; y < _imgSource.Height; y++)
+            Bitmap _Rs = new Bitmap(_imgsouce.Width, _imgsouce.Height);
+            for (int x = 0; x < _imgsouce.Width; x++)
+                for (int y = 0; y < _imgsouce.Height; y++)
                 {
                     color1 = _imgSource.GetPixel(x, y);
-                    int tmp = color1.R + c;
+                    int tmp = color1.R + Value;
                     if (tmp > 255)
                         color2 = Color.FromArgb(255, 255, 255);
                     else if (tmp < 0)
                         color2 = Color.FromArgb(0, 0, 0);
                     else
                         color2 = Color.FromArgb(tmp, tmp, tmp);
-                    _imgResult.SetPixel(x, y, color2);
+                    _Rs.SetPixel(x, y, color2);
                 }
-            picResult.Image = _imgResult;
+            return Task.FromResult(_Rs);
         }
+        private async void trkC_ValueChanged(object sender, EventArgs e)
+        {
+            lblC.Text=trkC.Value.ToString();
+            if (_imgSource != null)
+            {
+                    if(rdosang.Checked)
+                        picResult.Image = await thaydoidosang(_imgSource, trkC.Value);
+                    else if (rdotachnguong.Checked)
+                    {
+                        this.picResult.Image = Tachnguong(trkC.Value, _imgSource);
+                    }
+                    else if (rdobocum.Checked)
+                    {
+                        this.picResult.Image = Bocum( _imgSource, trkC.Value);
+                    }
+                else if(rdobienanh.Checked)
+                        this.picResult.Image = Timbienanh(_imgSource, trkC.Value);
+                    else if (rdolaplace.Checked)
+                        this.picResult.Image = Laplace(_imgSource, trkC.Value);
+                
 
+
+            }
+
+        }
+        Bitmap Tachnguong(int nguong, Bitmap _img)
+        {
+            _img = Convertanhxam(_img);//chuyển sang ảnh xám;
+            Bitmap _Rs = new Bitmap(_img.Width, _img.Height);
+            for (int x = 0; x < _img.Width; x++)
+                for (int y = 0; y < _img.Height; y++)
+                {
+                    int color = _img.GetPixel(x, y).R;
+                    if (color >= nguong)
+                        _Rs.SetPixel(x, y, Color.FromArgb(255, 255, 255));
+                    else
+                        _Rs.SetPixel(x, y, Color.FromArgb(0, 0, 0));
+                }
+            return _Rs;
+        }
+        Bitmap TachnguongIso(Bitmap _img)
+        {
+            _img = Convertanhxam(_img);
+            int gray = 0;
+            Bitmap _Rs = new Bitmap(_img.Width, _img.Height);
+            //tính trung bình mức xám 
+            for (int x = 0; x < _img.Width; x++)
+                for (int y = 0; y < _img.Height; y++)
+                {
+                    gray += _img.GetPixel(x, y).R;
+                }
+            int threshold = gray / (_img.Width * _img.Height);//ngưỡng ban đầu
+            int oldthreadold = 0;
+            while (threshold != oldthreadold)
+            {
+                // Tính trung bình của hai nhóm điểm ảnh được tách ra bởi ngưỡng hiện tại
+                double sum1 = 0, sum2 = 0;
+                int count1 = 0, count2 = 0;
+                for (int x = 0; x < _img.Width; x++)
+                {
+                    for (int y = 0; y < _img.Height; y++)
+                    {
+
+                        int grayScale = _img.GetPixel(x, y).R;
+                        if (grayScale < threshold)
+                        {
+                            sum1 += grayScale;
+                            count1++;
+                        }
+                        else
+                        {
+                            sum2 += grayScale;
+                            count2++;
+                        }
+                    }
+                }
+                double mean1 = sum1 / count1;
+                double mean2 = sum2 / count2;
+
+                // Cập nhật ngưỡng
+                oldthreadold = threshold;
+                threshold = (int)((mean1 + mean2) / 2);
+            }
+            // tạo ảnh nhị phân bằng ngưỡng mới
+            for (int x = 0; x < _img.Width; x++)
+                for (int y = 0; y < _img.Height; y++)
+                {
+                    int grayScale = _img.GetPixel(x, y).R;
+                    if (grayScale < threshold)
+                        _Rs.SetPixel(x, y, Color.FromArgb(0, 0, 0));
+                    else
+                        _Rs.SetPixel(x, y, Color.FromArgb(255, 255, 255));
+                }
+            return _Rs;
+        }
+        Bitmap Tangdotuongphan(Bitmap _img)//Linear Contrast Stretching
+        {
+            int gray = 0;
+            int maxgray = 0;
+            int mingray = 255;
+            _img = Convertanhxam(_img);
+            Bitmap _Rs = new Bitmap(_img.Width, _img.Height);
+            for (int x = 0; x < _img.Width; x++)
+                for (int y = 0; y < _img.Height; y++)
+                {
+                    if (_img.GetPixel(x, y).R > maxgray)
+                    {
+                        maxgray = _img.GetPixel(x, y).R; //mức xám lớn nhất
+                    }
+                    if (_img.GetPixel(x, y).R < mingray)
+                    {
+                        mingray = _img.GetPixel(x, y).R;//mức xám nhỏ nhất
+                    }
+                    gray += _img.GetPixel(x, y).R;
+                }
+            int avg = gray / (_img.Width * _img.Height);//trung bình mức xám trong ảnh
+            //tăng độ tương phản cho từng điểm ảnh
+            for (int x = 0; x < _img.Width; x++)
+                for (int y = 0; y < _img.Height; y++)
+                {
+                    int current = _img.GetPixel(x, y).R;
+                    double newcolor = (double)(current - mingray) / (double)(maxgray - mingray);
+                    newcolor = newcolor * 255;
+                    // newgray = Math.Max(0, Math.Min(255, newgray));
+                    _Rs.SetPixel(x, y, Color.FromArgb((int)newcolor, (int)newcolor, (int)newcolor));
+                }
+            return _Rs;
+        }
+        Bitmap Amban(Bitmap _img)
+        {
+            _img = Convertanhxam(_img);
+            Bitmap _Rs = new Bitmap(_img.Width, _img.Height);
+            for (int x = 0; x < _img.Width; x++)
+                for (int y = 0; y < _img.Height; y++)
+                {
+                    int color = _img.GetPixel(x, y).R;
+                    _Rs.SetPixel(x, y, Color.FromArgb(255 - color, 255 - color, 255 - color));
+                }
+            return _Rs;
+        }
+        int avg(Bitmap _img, int x, int y, int _size)
+        {
+            int count = 0;
+            int sum = 0;
+            //chạy trong khoảng ma trận vuông truyền vào
+            for (int i = x - _size; i <= x + _size; i++)
+            {
+                for (int j = y - _size; j <= y + _size; j++)
+                {
+                    if (i >= 0 && i < _img.Width && j >= 0 && j < _img.Height)
+                    {
+                        count++;
+                        sum += _img.GetPixel(i, j).R;
+                    }
+                }
+            }
+            return (int)Math.Round((double)sum / (double)count);
+        }
+        Bitmap Loctrungbinh(Bitmap _img, int _size)
+        {
+            Bitmap _Rs = Convertanhxam(_img);
+            for (int x = _size; x < _img.Width - _size; x++)
+            {
+                for (int y = _size; y < _img.Height - _size; y++)
+                {
+                    int newcolor = avg(_img, x, y, _size);
+                    _Rs.SetPixel(x, y, Color.FromArgb(newcolor, newcolor, newcolor));
+                }
+            }
+            return _Rs;
+        }
+        int Trungvi(Bitmap _img, int x, int y, int _size)
+        {
+            List<int> arr = new List<int>();
+            //lấy giá trị trong khung ma trận vào một list
+            for (int i = x - _size; i <= x + _size; i++)
+            {
+                for (int j = y - _size; j <= y + _size; j++)
+                {
+                    if (i >= 0 && i < _img.Width && j >= 0 && j < _img.Height)
+                    {
+                        arr.Add(_img.GetPixel(i, y).R);
+                    }
+                }
+            }
+            arr.Sort();
+            return arr[arr.Count / 2];
+        }
+        Bitmap Loctrungvi(Bitmap _img, int _size)
+        {
+            Bitmap _Rs = Convertanhxam(_img);
+            for (int x = _size; x <= _img.Width - _size; x++)
+            {
+                for (int y = _size; y <= _img.Height - _size; y++)
+                {
+                    int oldcolor = _img.GetPixel(x, y).R;
+                    int newcolor = Trungvi(_img, x, y, _size);
+                    _Rs.SetPixel(x, y, Color.FromArgb(newcolor, newcolor, newcolor));
+                }
+            }
+            return _Rs;
+        }
+        Bitmap Bocum(Bitmap _img, int bunch_size)
+        {
+            _img = Convertanhxam(_img);
+            Bitmap _Rs = new Bitmap(_img.Width, _img.Height);
+            for (int x = 0; x < _img.Width; x++)
+            {
+                for (int y = 0; y < _img.Height; y++)
+                {
+                    int oldcolor = _img.GetPixel(x, y).R;
+                    int newcolor = oldcolor / bunch_size * bunch_size;
+                    _Rs.SetPixel(x, y, Color.FromArgb(newcolor, newcolor, newcolor));
+                }
+            }
+            return _Rs;
+        }
         private void picSource_MouseMove(object sender, MouseEventArgs e)
         {
             txtXSrc.Text = e.X.ToString();
@@ -89,7 +324,6 @@ namespace DIP2023_Lvlanh
                 txtBSrc.Text = c.B.ToString();
             }
         }
-
         private void btnSave_Click(object sender, EventArgs e)
         {
             saveFileDialog.Filter = "Bitmap file |*.bmp| JEPG files|*.jpg| PNG files|*.png";
@@ -100,7 +334,6 @@ namespace DIP2023_Lvlanh
                 _imgResult.Save(saveFileDialog.FileName);
             }
         }
-
         private void picResult_MouseMove(object sender, MouseEventArgs e)
         {
             txtXRsl.Text = e.X.ToString();
@@ -118,18 +351,63 @@ namespace DIP2023_Lvlanh
         }
         private void rdosang_CheckedChanged(object sender, EventArgs e)
         {
-            if (rdosang.Checked)
-                _manager.Set(0, Image, Parameter, grbHistogram);
-            else if (rdoconvert.Checked)
-                _manager.Set(1, Image, Parameter, grbHistogram);
-            else if (rdohistogram.Checked)
-                _manager.Set(2, Image, Parameter, grbHistogram);
-            else if (rdobienanh.Checked)
-                _manager.Set(3, Image, Parameter, grbHistogram);
+            RadioButton radio = (RadioButton)sender;
+            switch (radio.Name)
+            {
+                case "rdosang":
+                    _manager.Set(0, Image, Parameter, grbHistogram, grbmatrix, lbbar, trkC);
+                    break;
+                case "rdoconvert":
+                    _manager.Set(1, Image, Parameter, grbHistogram, grbmatrix, lbbar, trkC);
+                    break;
+                case "rdohistogram":
+                    _manager.Set(2, Image, Parameter, grbHistogram, grbmatrix, lbbar, trkC);
+                    break;
+                case "rdotachnguong":
+                    _manager.Set(3, Image, Parameter, grbHistogram, grbmatrix, lbbar, trkC);
+                    lblC.Text = "0";
+                    break;
+                case "rdoisodata":
+                    _manager.Set(4, Image, Parameter, grbHistogram, grbmatrix, lbbar, trkC);
+                    break;
+                case "rdobocum":
+                    _manager.Set(5, Image, Parameter, grbHistogram, grbmatrix, lbbar, trkC);
+                    break;
+                case "rdotuongphan":
+                    _manager.Set(6, Image, Parameter, grbHistogram, grbmatrix, lbbar, trkC);
+                    break;
+                case "rdoamban":
+                    _manager.Set(7, Image, Parameter, grbHistogram, grbmatrix, lbbar, trkC);
+                    break;
+                case "rdotrungbinh":
+                    _manager.Set(8, Image, Parameter, grbHistogram, grbmatrix, lbbar, trkC);
+                    txtk.Enabled = false;
+                    btndownk.Enabled = false;
+                    btnupk.Enabled = false;
+                    break;
+                case "rdoloctrungvi":
+                    _manager.Set(9, Image, Parameter, grbHistogram, grbmatrix, lbbar, trkC);
+                    txtk.Enabled = false;
+                    btndownk.Enabled = false;
+                    btnupk.Enabled = false;
+                    break;
+                case "rdoloctheok":
+                    _manager.Set(10, Image, Parameter, grbHistogram, grbmatrix, lbbar, trkC);
+                    txtk.Enabled = true;
+                    btndownk.Enabled = true;
+                    btnupk.Enabled = true;
+                    break;
+                case "rdobienanh":
+                    _manager.Set(11, Image, Parameter, grbHistogram, grbmatrix, lbbar, trkC);
+                    break;
+                case "rdolaplace":
+                    _manager.Set(11, Image, Parameter, grbHistogram, grbmatrix, lbbar, trkC);
+                    break;
+            }
         }
         Bitmap Convertanhxam(Bitmap input)//hàm chuyển ảnh màu sang ảnh xám
         {
-            Bitmap output=new Bitmap(input.Width, input.Height);
+            Bitmap output = new Bitmap(input.Width, input.Height);
             for (int x = 0; x < input.Width; x++)
                 for (int y = 0; y < input.Height; y++)
                 {
@@ -154,13 +432,13 @@ namespace DIP2023_Lvlanh
         Bitmap Vehistogram(int[] data)
         {
             Bitmap _his = new Bitmap(256, 300);
-            int _tyley =Convert.ToInt32(Math.Ceiling(Findmax(data) /300));//tỉ lệ biểu đồ cho khớp với picbox lam tron len
-            for(int x=0;x<data.Length;x++)
+            int _tyley = Convert.ToInt32(Math.Ceiling(Findmax(data) / 300));//tỉ lệ biểu đồ cho khớp với picbox lam tron len
+            for (int x = 0; x < data.Length; x++)
             {
                 //_his.SetPixel(x, GethistogramValue(_imgResult)[x] / _tyley, Color.Red);
                 using (var graphics = Graphics.FromImage(_his))
                 {
-                    graphics.DrawLine(new Pen(Color.Red,1), x, 0, x, data[x] / _tyley);
+                    graphics.DrawLine(new Pen(Color.Red, 1), x, 0, x, data[x] / _tyley);
                 }
             }
             return _his;
@@ -173,12 +451,12 @@ namespace DIP2023_Lvlanh
                     max = i;
             return max;
         }
-          Bitmap Timbienanh(Bitmap _img)//ky thuat Sobel 
+        Bitmap Timbienanh(Bitmap _img, int nguong)//Giai thuat Sobel 
         {
             int[,] Hx =
             {
                 { -1,0,1},
-                {-1,0,2 },
+                {-2,0,2 },
                 {-1,0,1}
             };
             int[,] Hy =
@@ -187,30 +465,154 @@ namespace DIP2023_Lvlanh
                 {0,0,0 },
                 {1,2,1}
             };
-            Bitmap _imgresult=new Bitmap(_img.Width, _img.Height);
-            int dx = 0; int dy = 0;
-            for (int x=1;x<_img.Width-1;x++)
-                for(int y = 1; y < _img.Height-1; y++)
+            Bitmap _imgresult = Convertanhxam(_img);
+            for (int x = 1; x < _img.Width - 1; x++)
+                for (int y = 1; y < _img.Height - 1; y++)
                 {
                     //I*Hx
-                    dx = _img.GetPixel(x - 1, y - 1).R * Hx[0, 0] + _img.GetPixel(x - 1, y).R * Hx[1, 0] + _img.GetPixel(x - 1, y + 1).R * Hx[1, 0] +
-                        _img.GetPixel(x, y - 1).R * Hx[0, 1] + _img.GetPixel(x, y).R * Hx[1, 1] + _img.GetPixel(x, y + 1).R * Hx[2, 1] +
-                         _img.GetPixel(x + 1, y - 1).R * Hx[0, 2] + _img.GetPixel(x + 1, y).R * Hx[1, 2] + _img.GetPixel(x + 1, y + 1).R * Hx[2, 2];
+                    int dx = _img.GetPixel(x - 1, y - 1).R * Hx[0, 0] + _img.GetPixel(x - 1, y + 1).R * Hx[0, 2] + _img.GetPixel(x, y - 1).R * Hx[1, 0] +
+                            _img.GetPixel(x, y + 1).R * Hx[1, 2] + _img.GetPixel(x + 1, y - 1).R * Hx[2, 0] + _img.GetPixel(x + 1, y + 1).R * Hx[2, 2];
                     //I*Hy
-                    dy= _img.GetPixel(x - 1, y - 1).R * Hy[0, 0] + _img.GetPixel(x - 1, y).R * Hy[0, 1] + _img.GetPixel(x - 1, y + 1).R * Hy[0, 2] +
-                        _img.GetPixel(x, y - 1).R * Hy[1, 0] + _img.GetPixel(x, y).R * Hy[1, 1] + _img.GetPixel(x, y + 1).R * Hy[1, 2] +
-                         _img.GetPixel(x + 1, y - 1).R * Hy[2, 0] + _img.GetPixel(x + 1, y).R * Hy[2, 1] + _img.GetPixel(x + 1, y + 1).R * Hy[2, 2];
+                    int dy = _img.GetPixel(x - 1, y - 1).R * Hy[0, 0] + _img.GetPixel(x - 1, y).R * Hy[0, 1] + _img.GetPixel(x - 1, y + 1).R * Hy[0, 2] +
+                             _img.GetPixel(x + 1, y - 1).R * Hy[2, 0] + _img.GetPixel(x + 1, y).R * Hy[2, 1] + _img.GetPixel(x + 1, y + 1).R * Hy[2, 2];
                     double derivata = Math.Sqrt((dx * dx) + (dy * dy));
-                    if (derivata > 255)
+                    if (derivata > nguong)
                     {
                         _imgresult.SetPixel(x, y, Color.Red);//set màu đỏ vào biên đã phát hiện
                     }
-                    else
-                        _imgresult.SetPixel(x, y, Color.FromArgb(Convert.ToInt32(derivata), Convert.ToInt32(derivata), Convert.ToInt32(derivata)));//set màu cũ
                 }
             return _imgresult;
         }
-      
-        
+        int avgK(Bitmap _img, int x, int y, int k, int _size)
+        {
+            List<int> values = new List<int>();
+            int sum = 0;
+            //chạy trong ma trận vuông
+            for (int i = x - _size; i <= x + _size; i++)
+            {
+                for (int j = y - _size; j <= y + _size; j++)
+                {
+                    if (i >= 0 && i < _img.Width && j >= 0 && j < _img.Height)
+                    {
+                        values.Add(_img.GetPixel(i, j).R);
+                    }
+                }
+            }
+            int number = values[values.Count / 2];
+            values.RemoveAt(values.Count / 2);
+            int[] arr = new int[values.Count];
+            for (int i = 0; i < values.Count; i++)
+            {
+                arr[i] = values[i];
+            }
+            Array.Sort(arr, (a, b) => Math.Abs(a - number).CompareTo(Math.Abs(b - number)));
+            for (int i = 0; i < k; i++)
+            {
+                sum += arr[i];
+            }
+            return sum / k;
+        }
+        Bitmap LoctheoK(Bitmap _img, int k, int _size)
+        {
+            Bitmap _Rs = Convertanhxam(_img);
+            for (int x = _size; x < _img.Width -_size; x++)
+            {
+                for (int y = _size; y < _img.Height -_size; y++)
+                {
+                    int oldcolor = _img.GetPixel(x, y).R;//thêm để debug
+                    int newcolor = avgK(_img, x, y, k, _size);
+                    _Rs.SetPixel(x, y, Color.FromArgb(newcolor, newcolor, newcolor));
+                }
+            }
+            return _Rs;
+        }
+        Bitmap Laplace(Bitmap _img, int nguong)
+        {
+            Bitmap _Rs = Convertanhxam(_img);
+            int[,] laplace =
+            {
+                {0,1,0},
+                {1,-4,1},
+                {0,1,0 }
+            };
+            for (int x = 1; x < _img.Width - 1; x++)
+                for (int y = 1; y < _img.Height - 1; y++)
+                {
+                    //I*Laplace
+                    int sold = _img.GetPixel(x - 1, y - 1).R * laplace[0, 0] + _img.GetPixel(x - 1, y).R * laplace[0, 1] + _img.GetPixel(x - 1, y + 1).R * laplace[0, 2] +
+                        _img.GetPixel(x, y - 1).R * laplace[1, 0] + _img.GetPixel(x, y).R * laplace[1, 1] + _img.GetPixel(x, y + 1).R * laplace[1, 2] +
+                        _img.GetPixel(x + 1, y - 1).R * laplace[2, 0] + _img.GetPixel(x + 1, y).R * laplace[2, 1] + _img.GetPixel(x + 1, y + 1).R * laplace[2, 2];
+                    if (sold > nguong)
+                    {
+                        _Rs.SetPixel(x, y, Color.Red);
+                    }
+                }
+            return _Rs;
+        }
+
+        private void btnupsize_Click(object sender, EventArgs e)
+        {
+            int value = int.Parse(txtsize.Text);
+            int newvalue = value + 1;
+            txtsize.Text = newvalue.ToString();
+            if (newvalue >= 10)
+                txtsize.Text = "15";
+            lbsize.Text = $"{newvalue * 2 + 1} x {newvalue * 2 + 1}";
+        }
+
+        private void btndownsize_Click(object sender, EventArgs e)
+        {
+            int value = int.Parse(txtsize.Text);
+                int newvalue = value - 1;
+            if (newvalue <= 0)
+                newvalue = 1;
+            txtsize.Text= newvalue.ToString();
+            lbsize.Text = $"{newvalue * 2 + 1} x {newvalue * 2 + 1}";
+        }
+
+        private void btnupk_Click(object sender, EventArgs e)
+        {
+            txtk.Text = (int.Parse(txtk.Text) + 1).ToString();
+            int size = int.Parse(txtsize.Text)*2+1;
+            if (int.Parse(txtk.Text) >=size*size)
+            {
+                txtk.Text = (size * size-1).ToString();
+            }
+        }
+        private void btndownk_Click(object sender, EventArgs e)
+        {
+            int values = (int.Parse(txtk.Text) - 1);
+            if (values <= 0)
+                values = 1;
+            txtk.Text = values.ToString();
+        }
+
+        private void btnrun_Click(object sender, EventArgs e)
+        {
+            if (rdotrungbinh.Checked &&_imgSource!=null)
+            {
+                int size = Convert.ToInt32(txtsize.Text);
+                this.picResult.Image = Loctrungbinh(_imgSource, size);
+            }
+           else if (rdoloctrungvi.Checked && _imgSource != null)
+            {
+                int size = Convert.ToInt32(txtsize.Text);
+                this.picResult.Image = Loctrungvi(_imgSource, size);
+            }
+            else if (rdoloctheok.Checked && _imgSource != null)
+            {
+                int k = Convert.ToInt32(txtk.Text);
+                int size = Convert.ToInt32(txtsize.Text);
+                this.picResult.Image = LoctheoK(_imgSource, k, size);
+            }
+        }
+        private void lbsize_TextChanged(object sender, EventArgs e)
+        {
+            int size = int.Parse(txtsize.Text) * 2 + 1;
+            if (int.Parse(txtk.Text)>=size*size)
+            {
+                txtk.Text = (size * size-1).ToString();
+            }
+        }
     }
 }
