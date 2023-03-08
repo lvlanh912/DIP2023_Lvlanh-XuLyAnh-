@@ -470,11 +470,13 @@ namespace DIP2023_Lvlanh
                 for (int y = 1; y < _img.Height - 1; y++)
                 {
                     //I*Hx
-                    int dx = _img.GetPixel(x - 1, y - 1).R * Hx[0, 0] + _img.GetPixel(x - 1, y + 1).R * Hx[0, 2] + _img.GetPixel(x, y - 1).R * Hx[1, 0] +
-                            _img.GetPixel(x, y + 1).R * Hx[1, 2] + _img.GetPixel(x + 1, y - 1).R * Hx[2, 0] + _img.GetPixel(x + 1, y + 1).R * Hx[2, 2];
+                    int dx = _img.GetPixel(x - 1, y - 1).R * Hx[0, 0] + _img.GetPixel(x - 1, y + 1).R * Hx[0, 2] + 
+                             _img.GetPixel(x, y - 1).R * Hx[1, 0] +_img.GetPixel(x, y + 1).R * Hx[1, 2] + 
+                             _img.GetPixel(x + 1, y - 1).R * Hx[2, 0] + _img.GetPixel(x + 1, y + 1).R * Hx[2, 2];
                     //I*Hy
-                    int dy = _img.GetPixel(x - 1, y - 1).R * Hy[0, 0] + _img.GetPixel(x - 1, y).R * Hy[0, 1] + _img.GetPixel(x - 1, y + 1).R * Hy[0, 2] +
-                             _img.GetPixel(x + 1, y - 1).R * Hy[2, 0] + _img.GetPixel(x + 1, y).R * Hy[2, 1] + _img.GetPixel(x + 1, y + 1).R * Hy[2, 2];
+                    int dy = _img.GetPixel(x - 1, y - 1).R * Hy[0, 0] + _img.GetPixel(x - 1, y).R * Hy[0, 1] + 
+                             _img.GetPixel(x - 1, y + 1).R * Hy[0, 2] + _img.GetPixel(x + 1, y - 1).R * Hy[2, 0] + 
+                             _img.GetPixel(x + 1, y).R * Hy[2, 1] + _img.GetPixel(x + 1, y + 1).R * Hy[2, 2];
                     double derivata = Math.Sqrt((dx * dx) + (dy * dy));
                     if (derivata > nguong)
                     {
