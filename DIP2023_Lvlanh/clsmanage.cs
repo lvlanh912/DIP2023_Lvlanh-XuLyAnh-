@@ -36,7 +36,7 @@ namespace DIP2023_Lvlanh
                     size.Visible = false;
                     break ;
                 case 3://tách ngưỡng cố định
-                    trc.Minimum = 0;
+                    trc.Minimum = 0;                  
                     lbbar.Text = "chọn ngưỡng";
                     a.Enabled = true;
                     bar.Visible = true;
@@ -58,10 +58,10 @@ namespace DIP2023_Lvlanh
                     histogram.Visible = false;
                     break;
                 case 6://tăng tương phản 
-                    trc.Minimum = 0;
+                    //trc.Minimum = 0;
                     lbbar.Text = "kéo để tùy chỉnh";
                     a.Enabled = true;
-                    bar.Visible = true;
+                    bar.Visible = false;
                     size.Visible = false;
                     histogram.Visible = false;
                     break;
