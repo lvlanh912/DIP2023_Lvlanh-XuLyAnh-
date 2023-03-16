@@ -406,9 +406,8 @@ namespace DIP2023_Lvlanh
             activebutton(sender);
             _manager.Set(12, Image, Parameter, grbHistogram, grbmatrix, lbbar, trkC);
         }
-        public bool IsTaskCompleted(Task task)
-        {
-            return task.IsCompleted;
-        }
     }
 }
+//add class xulianh
+//add new UI
+//add Task
